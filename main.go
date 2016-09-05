@@ -8,11 +8,38 @@ import (
 	"time"
 )
 
+var SAMPLE_RATE int32
+
+var BPM = 100
 var position int
 
 type Sequencer struct {
-	Buffer []float32
+	CurrentLine int
+	Pattern *Pattern
 	Stream	*portaudio.Stream
+}
+
+type Instrument struct {
+	Audio []float32
+}
+
+type Pattern struct {
+	Lines []*Note
+}
+
+type Note struct {
+	Instrument *Instrument
+}
+
+func NewPattern() (*Pattern, error) {
+	pattern := &Pattern{}
+	pattern.Lines = make([]*Note, 4)
+	return pattern, nil
+}
+
+func NewNote() (*Note, error) {
+	note := &Note{}
+	return note, nil
 }
 
 func NewSequencer() (*Sequencer, error) {
@@ -24,10 +51,15 @@ func NewSequencer() (*Sequencer, error) {
 	s := &Sequencer{
 	}
 
+	kick := &Instrument{}
+	audio, info, err := LoadSample("kick.wav")
+  SAMPLE_RATE = info.Samplerate
+	kick.Audio = audio
+
 	stream, err := portaudio.OpenDefaultStream(
 		0,
 		2,
-		float64(44100),
+		float64(SAMPLE_RATE),
 		portaudio.FramesPerBufferUnspecified,
 		s.ProcessAudio,
 	)
@@ -38,17 +70,26 @@ func NewSequencer() (*Sequencer, error) {
 
 	s.Stream = stream
 
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		return nil, err
+	}
+
+	note, _ := NewNote()
+	note.Instrument = kick
+
+	pattern, _ := NewPattern()
+	pattern.Lines[0] = note
+	pattern.Lines[1] = note
+	pattern.Lines[2] = note
+	pattern.Lines[3] = note
+
+	s.Pattern = pattern
+
 	return s, nil
 }
 
 func (s *Sequencer) Start() {
-	fmt.Println("start")
-	buffer, _, err := LoadSample("kick.wav")
-	s.Buffer = buffer
-	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		return
-	}
 	s.Stream.Start()
 }
 
@@ -57,17 +98,25 @@ func (s *Sequencer) Close() {
 }
 
 func (s *Sequencer) ProcessAudio(out []float32) {
+	// fmt.Println("%v", len(out))
 	for i := range out {
 		var data float32
-		if position < len(s.Buffer) {
-			data += s.Buffer[position]
-			position++
+		if position >= int(SAMPLE_RATE) {
+			position = 0
+			s.CurrentLine++
+			if (s.CurrentLine > 3) {
+				s.CurrentLine = 0
+			}
 		}
+		note := s.Pattern.Lines[s.CurrentLine]
+		if position < len(note.Instrument.Audio) {
+			data += note.Instrument.Audio[position]
+		}
+		position++
 		if data > 1.0 {
 			data = 1.0
 		}
 		out[i] = data
-
 	}
 }
 
@@ -108,6 +157,6 @@ func main() {
 	}
 	s.Start()
 
-		time.Sleep(time.Second)
+	time.Sleep(time.Second * 5)
 	s.Close()
 }
