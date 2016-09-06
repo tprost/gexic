@@ -121,6 +121,8 @@ func (s *Sequencer) ProcessAudio(out []float32) {
 	for i := range out {
 		if out[i] > 1.0 {
 			out[i] = 1.0
+		} else if out[i] < -1.0 {
+			out[i] = -1.0
 		}
 	}
 
@@ -139,18 +141,32 @@ func main() {
 		return
 	}
 
-	track := s.AddTrack()
+	track1 := s.AddTrack()
+	track2 := s.AddTrack()
 
-	note, _ := NewNote()
-	note.Instrument, _ = NewKick()
+	rain, _ := NewSampler("rain.wav")
+	kick, _ := NewSampler("kick.wav")
+
+	kickNote, _ := NewNote()
+	rainNote, _ := NewNote()
+
+	kickNote.Instrument = kick
+	rainNote.Instrument = rain
 
 	s.Start()
 
-	track.PlayNote(note)
+	track1.PlayNote(kickNote)
+	track2.PlayNote(rainNote)
+
 	time.Sleep(time.Second)
-	track.PlayNote(note)
+
+	track1.PlayNote(kickNote)
+
 	time.Sleep(time.Second)
-	track.PlayNote(note)
+
+	track1.PlayNote(kickNote)
+
 	time.Sleep(time.Second)
+
 	s.Close()
 }

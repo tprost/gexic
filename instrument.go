@@ -9,14 +9,14 @@ type Instrument interface {
 	ProcessAudio(note *Note, offset int, out []float32)
 }
 
-type Kick struct {
+type Sampler struct {
 	Sample []float32
 	SampleInfo *sndfile.Info
 }
 
-func NewKick() (*Kick, error) {
-	kick := &Kick{}
-	audio, info, err := LoadSample("rain.wav")
+func NewSampler(filename string) (*Sampler, error) {
+	kick := &Sampler{}
+	audio, info, err := LoadSample(filename)
 	if err != nil {
 		return nil, err
 	}
@@ -25,7 +25,7 @@ func NewKick() (*Kick, error) {
 	return kick, nil
 }
 
-func (kick *Kick) ProcessAudio(note *Note, offset int, out []float32) {
+func (kick *Sampler) ProcessAudio(note *Note, offset int, out []float32) {
 	for i := range out {
 		if i + offset > len(kick.Sample) - 1 {
 			out[i] = 0
