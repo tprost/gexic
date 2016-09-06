@@ -21,7 +21,6 @@ type Sequencer struct {
 
 type Track struct {
 	CurrentNote *Note
-	Offset int // number of samples played since last note trigger
 }
 
 func NewTrack() (*Track, error) {
@@ -31,7 +30,7 @@ func NewTrack() (*Track, error) {
 
 func (track *Track) PlayNote(note *Note) {
 	track.CurrentNote = note
-	track.Offset = 0
+	note.Instrument.ProcessEvent(nil)
 }
 
 type Pattern struct {
@@ -110,12 +109,12 @@ func (s *Sequencer) ProcessAudio(out []float32) {
 		if track.CurrentNote != nil {
 			instrument := track.CurrentNote.Instrument
 			trackOut := make([]float32, length, length)
-			instrument.ProcessAudio(track.CurrentNote, track.Offset, trackOut)
+			instrument.ProcessAudio(trackOut)
 			for i := range out {
 				out[i] += trackOut[i]
 			}
 		}
-		track.Offset = track.Offset + length
+
 	}
 
 	for i := range out {

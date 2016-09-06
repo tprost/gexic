@@ -2,37 +2,45 @@ package main
 
 import (
 	"github.com/mkb218/gosndfile/sndfile"
+	midi "github.com/mattetti/audio/midi"
 	"fmt"
 )
 
 type Instrument interface {
-	ProcessAudio(note *Note, offset int, out []float32)
+	ProcessAudio(out []float32)
+	ProcessEvent(event *midi.Event)
 }
 
 type Sampler struct {
+	Offset int
 	Sample []float32
 	SampleInfo *sndfile.Info
 }
 
 func NewSampler(filename string) (*Sampler, error) {
-	kick := &Sampler{}
+	sampler := &Sampler{}
 	audio, info, err := LoadSample(filename)
 	if err != nil {
 		return nil, err
 	}
-	kick.Sample = audio
-	kick.SampleInfo = info
-	return kick, nil
+	sampler.Sample = audio
+	sampler.SampleInfo = info
+	return sampler, nil
 }
 
-func (kick *Sampler) ProcessAudio(note *Note, offset int, out []float32) {
+func (sampler *Sampler) ProcessAudio(out []float32) {
 	for i := range out {
-		if i + offset > len(kick.Sample) - 1 {
+		if i + sampler.Offset > len(sampler.Sample) - 1 {
 			out[i] = 0
 		} else {
-			out[i] = kick.Sample[i + offset]
+			out[i] = sampler.Sample[i + sampler.Offset]
 		}
 	}
+	sampler.Offset += len(out)
+}
+
+func (sampler *Sampler) ProcessEvent(event *midi.Event) {
+	sampler.Offset = 0
 }
 
 // LoadSample loads an audio sample from the passed in filename
