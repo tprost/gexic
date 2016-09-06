@@ -12,6 +12,7 @@ type Instrument interface {
 }
 
 type Sampler struct {
+	NoteOn bool
 	Offset int
 	Sample []float32
 	SampleInfo *sndfile.Info
@@ -23,6 +24,7 @@ func NewSampler(filename string) (*Sampler, error) {
 	if err != nil {
 		return nil, err
 	}
+	sampler.NoteOn = false
 	sampler.Sample = audio
 	sampler.SampleInfo = info
 	return sampler, nil
@@ -30,7 +32,7 @@ func NewSampler(filename string) (*Sampler, error) {
 
 func (sampler *Sampler) ProcessAudio(out []float32) {
 	for i := range out {
-		if i + sampler.Offset > len(sampler.Sample) - 1 {
+		if sampler.NoteOn == false || i + sampler.Offset > len(sampler.Sample) - 1 {
 			out[i] = 0
 		} else {
 			out[i] = sampler.Sample[i + sampler.Offset]
@@ -40,7 +42,14 @@ func (sampler *Sampler) ProcessAudio(out []float32) {
 }
 
 func (sampler *Sampler) ProcessEvent(event *midi.Event) {
-	sampler.Offset = 0
+	if (event != nil) {
+		if event.MsgType == midi.EventByteMap["NoteOff"] {
+			sampler.NoteOn = false
+		} else {
+			sampler.NoteOn = true
+			sampler.Offset = 0
+		}
+	}
 }
 
 // LoadSample loads an audio sample from the passed in filename

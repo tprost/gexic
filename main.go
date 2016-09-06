@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/gordonklaus/portaudio"
+	midi "github.com/mattetti/audio/midi"
 	_ "encoding/binary"
 	"fmt"
 	"time"
@@ -30,7 +31,7 @@ func NewTrack() (*Track, error) {
 
 func (track *Track) PlayNote(note *Note) {
 	track.CurrentNote = note
-	note.Instrument.ProcessEvent(nil)
+	note.Instrument.ProcessEvent(note.Event)
 }
 
 type Pattern struct {
@@ -38,18 +39,21 @@ type Pattern struct {
 }
 
 type Note struct {
+	Event *midi.Event
 	Instrument Instrument
+}
+
+func NewNote(event *midi.Event, instrument Instrument) (*Note, error) {
+	note := &Note{}
+	note.Instrument = instrument
+	note.Event = event
+	return note, nil
 }
 
 func NewPattern() (*Pattern, error) {
 	pattern := &Pattern{}
 	pattern.Lines = make([]*Note, 4)
 	return pattern, nil
-}
-
-func NewNote() (*Note, error) {
-	note := &Note{}
-	return note, nil
 }
 
 func NewSequencer() (*Sequencer, error) {
@@ -146,11 +150,15 @@ func main() {
 	rain, _ := NewSampler("rain.wav")
 	kick, _ := NewSampler("kick.wav")
 
-	kickNote, _ := NewNote()
-	rainNote, _ := NewNote()
+	// c3 := midi.NoteOn(0, 10, 50)
+	c4 := midi.NoteOn(0, 20, 50)
+	// c3NoteOff := midi.NoteOff(0, 10)
+	c4NoteOff := midi.NoteOff(0, 20)
 
-	kickNote.Instrument = kick
-	rainNote.Instrument = rain
+	kickNote, _ := NewNote(c4, kick)
+	//	kickNoteOff := NewNote(c4NoteOff, kick)
+	rainNote, _ := NewNote(c4, rain)
+	rainNoteOff, _ := NewNote(c4NoteOff, rain)
 
 	s.Start()
 
@@ -164,6 +172,11 @@ func main() {
 	time.Sleep(time.Second)
 
 	track1.PlayNote(kickNote)
+
+	time.Sleep(time.Second)
+
+	track1.PlayNote(kickNote)
+	track2.PlayNote(rainNoteOff)
 
 	time.Sleep(time.Second)
 
