@@ -4,6 +4,7 @@ import (
 	"github.com/mkb218/gosndfile/sndfile"
 	midi "github.com/mattetti/audio/midi"
 	"fmt"
+	"math"
 )
 
 type Instrument interface {
@@ -15,7 +16,23 @@ type Sampler struct {
 	NoteOn bool
 	Offset int
 	Sample []float32
+	FastSample []float32
+	SampleRate int
 	SampleInfo *sndfile.Info
+}
+
+
+func LinearInterpolation(newSampleRate int, oldSampleRate int, audio []float32) []float32 {
+	ratio := float64(newSampleRate)/float64(oldSampleRate)
+	length := int(float64(len(audio)) * ratio)
+	newAudio := make([]float32, length, length)
+	for i := range newAudio {
+		pos := int(float64(i) * ratio)
+		d1 := math.Mod(float64(i)*ratio, 1)
+		y := float64(audio[pos]) * d1 + float64(audio[pos]) * (1 - d1)
+		newAudio[i] = float32(y)
+	}
+	return newAudio
 }
 
 func NewSampler(filename string) (*Sampler, error) {
@@ -27,6 +44,9 @@ func NewSampler(filename string) (*Sampler, error) {
 	sampler.NoteOn = false
 	sampler.Sample = audio
 	sampler.SampleInfo = info
+	sampler.SampleRate = 44100
+	sampler.FastSample = LinearInterpolation(22050, 44100, audio)
+	sampler.Sample = sampler.FastSample
 	return sampler, nil
 }
 
