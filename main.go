@@ -69,7 +69,8 @@ func NewSequencer() (*Sequencer, error) {
 		0,
 		2,
 		float64(SAMPLE_RATE),
-		portaudio.FramesPerBufferUnspecified,
+		200,
+//		portaudio.FramesPerBufferUnspecified,
 		s.ProcessAudio,
 	)
 
