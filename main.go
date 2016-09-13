@@ -6,17 +6,23 @@ import (
 	_ "encoding/binary"
 	"fmt"
 	"time"
+	"github.com/golang-collections/go-datastructures/queue"
 )
 
-var SAMPLE_RATE int32 = 44100
+var sampleRate int = 44100
 
-var BPM = 100
+var bpm = 100
 var position int
 
+var latency int = 50 // ms
+
+
 type Sequencer struct {
+	EventQueue * queue.Queue
+	Queue *queue.Queue
 	CurrentSample int
 	Pattern *Pattern
-	Stream	*portaudio.Stream
+	Stream *portaudio.Stream
 	Tracks []*Track
 }
 
@@ -57,6 +63,8 @@ func NewPattern() (*Pattern, error) {
 }
 
 func NewSequencer() (*Sequencer, error) {
+
+
 	err := portaudio.Initialize()
 	if err != nil {
 		return nil, err
@@ -65,12 +73,14 @@ func NewSequencer() (*Sequencer, error) {
 	s := &Sequencer{
 	}
 
+	s.Queue = queue.New(100)
+
 	stream, err := portaudio.OpenDefaultStream(
 		0,
 		2,
-		float64(SAMPLE_RATE),
-		200,
-//		portaudio.FramesPerBufferUnspecified,
+		float64(sampleRate),
+		500,
+		//		portaudio.FramesPerBufferUnspecified,
 		s.ProcessAudio,
 	)
 
@@ -103,33 +113,43 @@ func (s *Sequencer) AddTrack() *Track {
 }
 
 func (s *Sequencer) ProcessAudio(out []float32) {
-
-	length := len(out)
-
-	for i := range out {
-		out[i] = 0
+	if s.Queue.Empty() {
+		for i := range out {
+			out[i] = 0
+		}
+	} else {
+		data, _ := s.Queue.Get(int64(len(out)))
+		if len(data) == len(out) {
+			for i := range out {
+				out[i] = data[i].(float32)
+			}
+		} else {
+			for i := range out {
+				out[i] = 0
+			}
+			for i := range data {
+				out[i] = data[i].(float32)
+			}
+		}
 	}
+}
 
+func (s *Sequencer) QueueSample() {
+	var sample float32 = 0
 	for _, track := range s.Tracks {
 		if track.CurrentNote != nil {
 			instrument := track.CurrentNote.Instrument
-			trackOut := make([]float32, length, length)
+			trackOut := make([]float32, 1, 1)
 			instrument.ProcessAudio(trackOut)
-			for i := range out {
-				out[i] += trackOut[i]
-			}
-		}
-
-	}
-
-	for i := range out {
-		if out[i] > 1.0 {
-			out[i] = 1.0
-		} else if out[i] < -1.0 {
-			out[i] = -1.0
+			sample += trackOut[0]
 		}
 	}
-
+	if sample > 1.0 {
+		sample = 1.0
+	} else if sample < -1.0 {
+		sample = -1.0
+	}
+	s.Queue.Put(sample)
 }
 
 func chk(err error) {
@@ -138,7 +158,16 @@ func chk(err error) {
 	}
 }
 
+var pianoSampler, _ = NewSampler("note.wav")
+
+func playPianoNote(track *Track, note int) {
+	noteOn := midi.NoteOn(0, note, 50)
+	pianoNote, _ := NewNote(noteOn, pianoSampler)
+	track.PlayNote(pianoNote)
+}
+
 func main() {
+
 	s, err := NewSequencer()
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
@@ -149,37 +178,48 @@ func main() {
 	track2 := s.AddTrack()
 
 	rain, _ := NewSampler("rain.wav")
-	kick, _ := NewSampler("kick.wav")
 
-	// c3 := midi.NoteOn(0, 10, 50)
-	c4 := midi.NoteOn(0, 20, 50)
-	// c3NoteOff := midi.NoteOff(0, 10)
-	c4NoteOff := midi.NoteOff(0, 20)
+	c5 := midi.NoteOn(0, 60, 50)
+	c5NoteOff := midi.NoteOff(0, 60)
 
-	kickNote, _ := NewNote(c4, kick)
-	//	kickNoteOff := NewNote(c4NoteOff, kick)
-	rainNote, _ := NewNote(c4, rain)
-	rainNoteOff, _ := NewNote(c4NoteOff, rain)
+	rainNote, _ := NewNote(c5, rain)
+	rainNoteOff, _ := NewNote(c5NoteOff, rain)
+
+	track1.PlayNote(rainNote)
+
+	ticker := time.NewTicker(time.Millisecond * 500)
+	go func() {
+		for t := range ticker.C {
+			// fmt.Println("Tick at", t)
+			t = t
+			for i := 0; i < sampleRate; i++ {
+				s.QueueSample()
+			}
+			// fmt.Println("queue is of size", s.Queue.Len())
+		}
+	}()
+
+	time.Sleep(time.Second*2)
 
 	s.Start()
 
-	track1.PlayNote(kickNote)
-	track2.PlayNote(rainNote)
-
-	time.Sleep(time.Second)
-
-	track1.PlayNote(kickNote)
-
-	time.Sleep(time.Second)
-
-	track1.PlayNote(kickNote)
-
-	time.Sleep(time.Second)
-
-	track1.PlayNote(kickNote)
-	track2.PlayNote(rainNoteOff)
-
-	time.Sleep(time.Second)
+	playPianoNote(track2, 60)
+	time.Sleep(time.Millisecond*250)
+	playPianoNote(track2, 62)
+	time.Sleep(time.Millisecond*250)
+	playPianoNote(track2, 63)
+	time.Sleep(time.Millisecond*250)
+	playPianoNote(track2, 64)
+	time.Sleep(time.Millisecond*250)
+	playPianoNote(track2, 57)
+	time.Sleep(time.Millisecond*250)
+	playPianoNote(track2, 55)
+	time.Sleep(time.Millisecond*250)
+	playPianoNote(track2, 52)
+	time.Sleep(time.Second * 5)
+	track1.PlayNote(rainNoteOff)
+	ticker.Stop()
+	fmt.Println("Ticker stopped")
 
 	s.Close()
 }

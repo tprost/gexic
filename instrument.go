@@ -13,6 +13,8 @@ type Instrument interface {
 }
 
 type Sampler struct {
+	Samples map[uint8][]float32
+	Note uint8
 	NoteOn bool
 	Offset int
 	Sample []float32
@@ -21,16 +23,24 @@ type Sampler struct {
 	SampleInfo *sndfile.Info
 }
 
-
 func LinearInterpolation(newSampleRate int, oldSampleRate int, audio []float32) []float32 {
-	ratio := float64(newSampleRate)/float64(oldSampleRate)
+	if newSampleRate == oldSampleRate {
+		return audio
+	}
+	ratio := float64(oldSampleRate)/float64(newSampleRate)
 	length := int(float64(len(audio)) * ratio)
 	newAudio := make([]float32, length, length)
 	for i := range newAudio {
-		pos := int(float64(i) * ratio)
-		d1 := math.Mod(float64(i)*ratio, 1)
-		y := float64(audio[pos]) * d1 + float64(audio[pos]) * (1 - d1)
-		newAudio[i] = float32(y)
+		x := float64(i) / ratio
+		r := math.Mod(x, 1)
+		d := int(x)
+
+		if d + 1 < len(audio) {
+			newAudio[i] = float32(float64(audio[d]) * r + float64(audio[d + 1]) * (1 - r))
+		} else {
+			newAudio[i] = audio[d]
+		}
+
 	}
 	return newAudio
 }
@@ -41,21 +51,43 @@ func NewSampler(filename string) (*Sampler, error) {
 	if err != nil {
 		return nil, err
 	}
+	sampler.Samples = make(map[uint8][]float32)
+	sampler.Note = 0
 	sampler.NoteOn = false
 	sampler.Sample = audio
 	sampler.SampleInfo = info
 	sampler.SampleRate = 44100
-	sampler.FastSample = LinearInterpolation(22050, 44100, audio)
-	sampler.Sample = sampler.FastSample
+	// for i := 0; i < 100; i++ {
+	//	note := i
+	//	rate := int(float64(sampler.SampleRate) * math.Pow(2, float64((float64(note) - 60)/12)))
+	//	sampler.Samples[sampler.Note] = LinearInterpolation(rate, sampler.SampleRate, sampler.Sample)
+
+	// }
 	return sampler, nil
 }
 
 func (sampler *Sampler) ProcessAudio(out []float32) {
-	for i := range out {
-		if sampler.NoteOn == false || i + sampler.Offset > len(sampler.Sample) - 1 {
+
+	if sampler.NoteOn == true {
+		sample := sampler.Samples[sampler.Note]
+		note := sampler.Note
+		if sample == nil {
+			rate := int(float64(sampler.SampleRate) * math.Pow(2, float64((float64(note) - 60)/12)))
+			fmt.Println("starting", rate)
+			sampler.Samples[sampler.Note] = LinearInterpolation(rate, sampler.SampleRate, sampler.Sample)
+			fmt.Println("done")
+		}
+		sample = sampler.Samples[sampler.Note]
+		for i := range out {
+			if i + sampler.Offset > len(sample) - 1 {
+				out[i] = 0
+			} else {
+				out[i] = sample[i + sampler.Offset]
+			}
+		}
+	} else {
+		for i := range out {
 			out[i] = 0
-		} else {
-			out[i] = sampler.Sample[i + sampler.Offset]
 		}
 	}
 	sampler.Offset += len(out)
@@ -66,6 +98,7 @@ func (sampler *Sampler) ProcessEvent(event *midi.Event) {
 		if event.MsgType == midi.EventByteMap["NoteOff"] {
 			sampler.NoteOn = false
 		} else {
+			sampler.Note = event.Note
 			sampler.NoteOn = true
 			sampler.Offset = 0
 		}
