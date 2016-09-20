@@ -9,7 +9,6 @@ import (
 
 var sampleRate = 44100
 
-
 func chk(err error) {
 	if err != nil {
 		panic(err)
@@ -25,8 +24,6 @@ func playPianoNote(track *Track, note int) {
 }
 
 func main() {
-
-	fmt.Println("main")
 
 	s, err := NewSequencer()
 	if err != nil {
@@ -68,8 +65,6 @@ func main() {
 	playPianoNote(track2, 52)
 	time.Sleep(time.Second * 5)
 	track1.PlayNote(rainNoteOff)
-
-	fmt.Println("Ticker stopped")
 
 	s.Close()
 }

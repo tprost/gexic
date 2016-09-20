@@ -73,9 +73,7 @@ func (sampler *Sampler) ProcessAudio(out []float32) {
 		note := sampler.Note
 		if sample == nil {
 			rate := int(float64(sampler.SampleRate) * math.Pow(2, float64((float64(note) - 60)/12)))
-			fmt.Println("starting", rate)
 			sampler.Samples[sampler.Note] = LinearInterpolation(rate, sampler.SampleRate, sampler.Sample)
-			fmt.Println("done")
 		}
 		sample = sampler.Samples[sampler.Note]
 		for i := range out {
