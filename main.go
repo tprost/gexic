@@ -9,6 +9,7 @@ import (
 
 var sampleRate = 44100
 
+
 func chk(err error) {
 	if err != nil {
 		panic(err)
@@ -24,6 +25,8 @@ func playPianoNote(track *Track, note int) {
 }
 
 func main() {
+
+	fmt.Println("main")
 
 	s, err := NewSequencer()
 	if err != nil {
@@ -44,21 +47,11 @@ func main() {
 
 	track1.PlayNote(rainNote)
 
-	ticker := time.NewTicker(time.Millisecond * 500)
-	go func() {
-		for t := range ticker.C {
-			// fmt.Println("Tick at", t)
-			t = t
-			for i := 0; i < sampleRate; i++ {
-				s.QueueSample()
-			}
-			// fmt.Println("queue is of size", s.Queue.Len())
-		}
-	}()
-
 	time.Sleep(time.Second*2)
 
-	s.Start()
+	player, _ := NewPlayer(s)
+	player.Start()
+
 
 	playPianoNote(track2, 60)
 	time.Sleep(time.Millisecond*250)
@@ -75,7 +68,7 @@ func main() {
 	playPianoNote(track2, 52)
 	time.Sleep(time.Second * 5)
 	track1.PlayNote(rainNoteOff)
-	ticker.Stop()
+
 	fmt.Println("Ticker stopped")
 
 	s.Close()

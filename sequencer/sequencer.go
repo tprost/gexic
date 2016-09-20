@@ -5,7 +5,6 @@ import (
 	midi "github.com/mattetti/audio/midi"
 	_ "encoding/binary"
 	"fmt"
-	"github.com/golang-collections/go-datastructures/queue"
 )
 
 var sampleRate int = 44100
@@ -16,8 +15,6 @@ var position int
 var latency int = 50 // ms
 
 type Sequencer struct {
-	EventQueue * queue.Queue
-	Queue *queue.Queue
 	CurrentSample int
 	Pattern *Pattern
 	Stream *portaudio.Stream
@@ -71,8 +68,6 @@ func NewSequencer() (*Sequencer, error) {
 	s := &Sequencer{
 	}
 
-	s.Queue = queue.New(100)
-
 	stream, err := portaudio.OpenDefaultStream(
 		0,
 		2,
@@ -110,42 +105,21 @@ func (s *Sequencer) AddTrack() *Track {
 	return track
 }
 
-func (s *Sequencer) ProcessAudio(out []float32) {
-	if s.Queue.Empty() {
-		for i := range out {
-			out[i] = 0
-		}
-	} else {
-		data, _ := s.Queue.Get(int64(len(out)))
-		if len(data) == len(out) {
-			for i := range out {
-				out[i] = data[i].(float32)
-			}
-		} else {
-			for i := range out {
-				out[i] = 0
-			}
-			for i := range data {
-				out[i] = data[i].(float32)
+func (s *Sequencer) ProcessAudio(out Buffer) {
+	for i := range out {
+		out[i] = 0
+		for _, track := range s.Tracks {
+			if track.CurrentNote != nil {
+				instrument := track.CurrentNote.Instrument
+				trackOut := make([]float32, 1, 1)
+				instrument.ProcessAudio(trackOut)
+				out[i] += trackOut[0]
 			}
 		}
-	}
-}
-
-func (s *Sequencer) QueueSample() {
-	var sample float32 = 0
-	for _, track := range s.Tracks {
-		if track.CurrentNote != nil {
-			instrument := track.CurrentNote.Instrument
-			trackOut := make([]float32, 1, 1)
-			instrument.ProcessAudio(trackOut)
-			sample += trackOut[0]
+		if out[i] > 1.0 {
+			out[i] = 1.0
+		} else if out[i] < -1.0 {
+			out[i] = -1.0
 		}
 	}
-	if sample > 1.0 {
-		sample = 1.0
-	} else if sample < -1.0 {
-		sample = -1.0
-	}
-	s.Queue.Put(sample)
 }
