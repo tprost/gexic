@@ -5,6 +5,8 @@ import (
 	midi "github.com/mattetti/audio/midi"
 	"fmt"
 	"math"
+	"gopkg.in/yaml.v2"
+	"io/ioutil"
 )
 
 type Instrument interface {
@@ -124,4 +126,14 @@ func LoadSample(filename string) ([]float32, *sndfile.Info, error) {
 	defer soundFile.Close()
 
 	return buffer[:numRead], &info, nil
+}
+
+
+
+func LoadInstrument(filename string) (Instrument, error) {
+	file, _ := ioutil.ReadFile(filename)
+	var fileMap map[string]string
+	yaml.Unmarshal(file, &fileMap)
+	instrument, error := NewSampler(fileMap["sample"])
+	return instrument, error
 }

@@ -15,7 +15,7 @@ func chk(err error) {
 	}
 }
 
-var pianoSampler, _ = NewSampler("note.wav")
+var pianoSampler, _ = LoadInstrument("piano.instrument.yaml")
 
 func playPianoNote(track *Track, note int) {
 	noteOn := midi.NoteOn(0, note, 50)
