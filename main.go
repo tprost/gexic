@@ -17,12 +17,6 @@ func chk(err error) {
 
 var pianoSampler, _ = LoadInstrument("piano.instrument.yaml")
 
-func playPianoNote(track *Track, note int) {
-	noteOn := midi.NoteOn(0, note, 50)
-	pianoNote, _ := NewNote(noteOn, pianoSampler)
-	track.PlayNote(pianoNote)
-}
-
 func main() {
 
 	s, err := NewSequencer()
@@ -31,40 +25,39 @@ func main() {
 		return
 	}
 
-	track1 := s.AddTrack()
-	track2 := s.AddTrack()
+	pattern, _ := NewPattern()
+	pattern.Instrument = pianoSampler
 
-	rain, _ := NewSampler("rain.wav")
+	note1, _ := NewNote(midi.NoteOn(0, 60, 50))
+	note2, _ := NewNote(midi.NoteOn(0, 59, 50))
+	note3, _ := NewNote(midi.NoteOn(0, 58, 50))
+	note4, _ := NewNote(midi.NoteOn(0, 57, 50))
+	note5, _ := NewNote(midi.NoteOn(0, 56, 50))
 
-	c5 := midi.NoteOn(0, 60, 50)
-	c5NoteOff := midi.NoteOff(0, 60)
+	row1, _ := NewRow()
+	row2, _ := NewRow()
+	row3, _ := NewRow()
+	row4, _ := NewRow()
+	row5, _ := NewRow()
 
-	rainNote, _ := NewNote(c5, rain)
-	rainNoteOff, _ := NewNote(c5NoteOff, rain)
+	row1.AddNote(note1)
+	row2.AddNote(note2)
+	row3.AddNote(note3)
+	row4.AddNote(note4)
+	row5.AddNote(note5)
 
-	track1.PlayNote(rainNote)
+	pattern.AddRow(row1)
+	pattern.AddRow(row2)
+	pattern.AddRow(row3)
+	pattern.AddRow(row4)
+	pattern.AddRow(row5)
 
-	time.Sleep(time.Second*2)
+	s.LoopPattern(pattern)
 
 	player, _ := NewPlayer(s)
 	player.Start()
 
-
-	playPianoNote(track2, 60)
-	time.Sleep(time.Millisecond*250)
-	playPianoNote(track2, 62)
-	time.Sleep(time.Millisecond*250)
-	playPianoNote(track2, 63)
-	time.Sleep(time.Millisecond*250)
-	playPianoNote(track2, 64)
-	time.Sleep(time.Millisecond*250)
-	playPianoNote(track2, 57)
-	time.Sleep(time.Millisecond*250)
-	playPianoNote(track2, 55)
-	time.Sleep(time.Millisecond*250)
-	playPianoNote(track2, 52)
 	time.Sleep(time.Second * 5)
-	track1.PlayNote(rainNoteOff)
 
 	s.Close()
 }

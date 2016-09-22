@@ -2,71 +2,30 @@ package sequencer
 
 import (
 	"github.com/gordonklaus/portaudio"
-	midi "github.com/mattetti/audio/midi"
 	_ "encoding/binary"
 	"fmt"
 )
 
 var sampleRate int = 44100
 
-var bpm = 100
+var bpm = 44100 // samples per row
 var position int
 
-var latency int = 50 // ms
-
 type Sequencer struct {
-	CurrentSample int
+	Tick int
 	Pattern *Pattern
+	patternLength int
 	Stream *portaudio.Stream
-	Tracks []*Track
-}
-
-type Track struct {
-	CurrentNote *Note
-}
-
-func NewTrack() (*Track, error) {
-	track := &Track{}
-	return track, nil
-}
-
-func (track *Track) PlayNote(note *Note) {
-	track.CurrentNote = note
-	note.Instrument.ProcessEvent(note.Event)
-}
-
-type Pattern struct {
-	Lines []*Note
-}
-
-type Note struct {
-	Event *midi.Event
-	Instrument Instrument
-}
-
-func NewNote(event *midi.Event, instrument Instrument) (*Note, error) {
-	note := &Note{}
-	note.Instrument = instrument
-	note.Event = event
-	return note, nil
-}
-
-func NewPattern() (*Pattern, error) {
-	pattern := &Pattern{}
-	pattern.Lines = make([]*Note, 4)
-	return pattern, nil
 }
 
 func NewSequencer() (*Sequencer, error) {
-
 
 	err := portaudio.Initialize()
 	if err != nil {
 		return nil, err
 	}
 
-	s := &Sequencer{
-	}
+	s := &Sequencer{}
 
 	stream, err := portaudio.OpenDefaultStream(
 		0,
@@ -99,27 +58,42 @@ func (s *Sequencer) Close() {
 	s.Stream.Close();
 }
 
-func (s *Sequencer) AddTrack() *Track {
-	track, _ := NewTrack()
-	s.Tracks = append(s.Tracks, track)
-	return track
+func (s *Sequencer) LoopPattern(pattern *Pattern) {
+	s.Pattern = pattern
+	s.patternLength = pattern.Length()
 }
 
 func (s *Sequencer) ProcessAudio(out Buffer) {
+
+	rows := s.Pattern.GetRowsAtIndex(s.Tick / bpm)
+	instrument := s.Pattern.Instrument
+
 	for i := range out {
-		out[i] = 0
-		for _, track := range s.Tracks {
-			if track.CurrentNote != nil {
-				instrument := track.CurrentNote.Instrument
-				trackOut := make([]float32, 1, 1)
-				instrument.ProcessAudio(trackOut)
-				out[i] += trackOut[0]
+
+		// process new position
+		if s.Tick > bpm * s.patternLength {
+			s.Tick = 0
+		}
+
+		if s.Tick % bpm == 0 {
+			rows = s.Pattern.GetRowsAtIndex(s.Tick / bpm)
+			for _, row := range rows {
+				for _, note := range row.Notes {
+					instrument.ProcessEvent(note.Event)
+				}
 			}
 		}
+
+		out[i] = 0
+		trackOut := make([]float32, 1, 1)
+		instrument.ProcessAudio(trackOut)
+		out[i] += trackOut[0]
+
 		if out[i] > 1.0 {
 			out[i] = 1.0
 		} else if out[i] < -1.0 {
 			out[i] = -1.0
 		}
+		s.Tick++
 	}
 }
