@@ -45,6 +45,7 @@ func main() {
 	row3.AddNote(note3)
 	row4.AddNote(note4)
 	row5.AddNote(note5)
+	row1.AddNote(note5)
 
 	pattern.AddRow(row1)
 	pattern.AddRow(row2)

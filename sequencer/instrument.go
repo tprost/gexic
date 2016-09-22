@@ -16,9 +16,8 @@ type Instrument interface {
 
 type Sampler struct {
 	Samples map[uint8][]float32
-	Note uint8
-	NoteOn bool
-	Offset int
+	Notes map[uint8]bool
+	NoteOffsets map[uint8]int
 	Sample []float32
 	FastSample []float32
 	SampleRate int
@@ -54,53 +53,49 @@ func NewSampler(filename string) (*Sampler, error) {
 		return nil, err
 	}
 	sampler.Samples = make(map[uint8][]float32)
-	sampler.Note = 0
-	sampler.NoteOn = false
+	sampler.Notes = make(map[uint8]bool)
+	sampler.NoteOffsets = make(map[uint8]int)
 	sampler.Sample = audio
 	sampler.SampleInfo = info
 	sampler.SampleRate = 44100
-	// for i := 0; i < 100; i++ {
-	//	note := i
-	//	rate := int(float64(sampler.SampleRate) * math.Pow(2, float64((float64(note) - 60)/12)))
-	//	sampler.Samples[sampler.Note] = LinearInterpolation(rate, sampler.SampleRate, sampler.Sample)
-
-	// }
 	return sampler, nil
 }
 
 func (sampler *Sampler) ProcessAudio(out []float32) {
-
-	if sampler.NoteOn == true {
-		sample := sampler.Samples[sampler.Note]
-		note := sampler.Note
+	for note, _ := range sampler.Notes {
+		sample := sampler.Samples[note]
 		if sample == nil {
 			rate := int(float64(sampler.SampleRate) * math.Pow(2, float64((float64(note) - 60)/12)))
-			sampler.Samples[sampler.Note] = LinearInterpolation(rate, sampler.SampleRate, sampler.Sample)
+			sampler.Samples[note] = LinearInterpolation(rate, sampler.SampleRate, sampler.Sample)
 		}
-		sample = sampler.Samples[sampler.Note]
+		sample = sampler.Samples[note]
 		for i := range out {
-			if i + sampler.Offset > len(sample) - 1 {
-				out[i] = 0
-			} else {
-				out[i] = sample[i + sampler.Offset]
+			offset := sampler.NoteOffsets[note]
+			if i + offset <= len(sample) - 1 {
+				out[i] += sample[i + offset]
 			}
 		}
-	} else {
-		for i := range out {
-			out[i] = 0
+		sampler.NoteOffsets[note] += len(out)
+	}
+	for i := range out {
+		if out[i] > 1.0 {
+			out[i] = 1.0
+		} else if out[i] < -1.0 {
+			out[i] = -1.0
 		}
 	}
-	sampler.Offset += len(out)
+
+
 }
 
 func (sampler *Sampler) ProcessEvent(event *midi.Event) {
 	if (event != nil) {
-		if event.MsgType == midi.EventByteMap["NoteOff"] {
-			sampler.NoteOn = false
-		} else {
-			sampler.Note = event.Note
-			sampler.NoteOn = true
-			sampler.Offset = 0
+		if event.MsgType == midi.EventByteMap["NoteOn"] {
+			sampler.Notes[event.Note] = true
+			sampler.NoteOffsets[event.Note] = 0
+		} else if event.MsgType == midi.EventByteMap["NoteOff"] {
+			delete(sampler.Notes, event.Note)
+			delete(sampler.NoteOffsets, event.Note)
 		}
 	}
 }

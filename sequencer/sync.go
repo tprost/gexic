@@ -2,6 +2,7 @@ package sequencer
 
 import (
 	"github.com/golang-collections/go-datastructures/queue"
+	"log"
 )
 
 type Buffer []float32
@@ -28,6 +29,7 @@ func NewAudioBufferer(processor AudioProcessor) (*AudioBufferer, error) {
 func (bufferer *AudioBufferer) ProcessAudio(out Buffer) {
 
 	if bufferer.Queue.Empty() {
+		log.Println("Warning! Empty buffer!")
 		for i := range out {
 			out[i] = 0
 		}
@@ -38,6 +40,7 @@ func (bufferer *AudioBufferer) ProcessAudio(out Buffer) {
 				out[i] = data[i].(float32)
 			}
 		} else {
+			log.Println("Warning! Close to empty buffer!")
 			for i := range out {
 				out[i] = 0
 			}
