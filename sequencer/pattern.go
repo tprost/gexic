@@ -1,5 +1,8 @@
 package sequencer
 
+import "os"
+import "bufio"
+
 type Pattern struct {
 	Instrument Instrument
 	Rows []*Row
@@ -42,4 +45,22 @@ func (pattern *Pattern) GetRowsAtIndex(index int) []*Row {
 		count++
 	}
 	return rows
+}
+
+func LoadPattern(filename string) (*Pattern, error) {
+	pattern, error := NewPattern()
+	file, error := os.Open(filename)
+	if error != nil {
+		return nil, error
+	}
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		row, _ := NewRow()
+		note, error := NewNoteFromString(scanner.Text())
+		if error == nil {
+			row.AddNote(note)
+		}
+		pattern.AddRow(row)
+	}
+	return pattern, nil
 }
