@@ -4,6 +4,7 @@ import midi "github.com/mattetti/audio/midi"
 import "strings"
 import "strconv"
 import "errors"
+import "fmt"
 
 type Note struct {
 	Event *midi.Event
@@ -16,13 +17,13 @@ func NewNote(event *midi.Event) (*Note, error) {
 }
 
 var NoteMap = map[string]int {
-	"a": 58,
+	"a": 57,
 	"b": 59,
 	"c": 60,
-	"d": 61,
-	"e": 62,
-	"f": 63,
-	"g": 64,
+	"d": 62,
+	"e": 64,
+	"f": 65,
+	"g": 67,
 }
 
 func NoteValue(str string) (int, error) {
@@ -41,9 +42,13 @@ func NoteValue(str string) (int, error) {
 		if char2 == "b" || char2 == "f" {
 			value--
 		}
-	}
-	if len(str) > 2 {
-		i, error := strconv.Atoi(string(str[2]))
+		var num string
+		if len(str) > 2 {
+			num = string(str[2])
+		} else {
+			num = string(str[1])
+		}
+		i, error := strconv.Atoi(num)
 		if error != nil || i < 0 || i > 9 {
 			return 0, errors.New("third character was something unexpected")
 		}
@@ -58,6 +63,7 @@ func NewNoteFromString(str string) (*Note, error) {
 		return nil, error
 	}
 	note, error := NewNote(midi.NoteOn(0, value, 50))
+	fmt.Println(value)
 	if error != nil {
 		return nil, error
 	}
