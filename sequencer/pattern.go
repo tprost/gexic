@@ -2,6 +2,7 @@ package sequencer
 
 import "os"
 import "bufio"
+import "strings"
 
 type Pattern struct {
 	Instrument Instrument
@@ -56,10 +57,15 @@ func LoadPattern(filename string) (*Pattern, error) {
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		row, _ := NewRow()
-		note, error := NewNoteFromString(scanner.Text())
-		if error == nil {
-			row.AddNote(note)
+		line := scanner.Text()
+		words := strings.Fields(line)
+		for _, word := range words {
+			note, error := NewNoteFromString(word)
+			if error == nil {
+				row.AddNote(note)
+			}
 		}
+
 		pattern.AddRow(row)
 	}
 	return pattern, nil

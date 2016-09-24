@@ -8,7 +8,7 @@ import (
 
 var sampleRate int = 44100
 
-var bpm = 44100 // samples per row
+var bpm = 22050 / 2 // samples per row
 var position int
 
 type Sequencer struct {
@@ -16,6 +16,7 @@ type Sequencer struct {
 	Pattern *Pattern
 	patternLength int
 	Stream *portaudio.Stream
+	HeldNotes []*Note
 }
 
 func NewSequencer() (*Sequencer, error) {
@@ -47,7 +48,19 @@ func NewSequencer() (*Sequencer, error) {
 		return nil, err
 	}
 
+	s.HeldNotes = []*Note{}
+
 	return s, nil
+}
+
+// returns previously held note
+func (s *Sequencer) PlayNote(pos int, note *Note) *Note {
+	for pos > len(s.HeldNotes) - 1 {
+		s.HeldNotes = append(s.HeldNotes, nil)
+	}
+	previous := s.HeldNotes[pos]
+	s.HeldNotes[pos] = note
+	return previous
 }
 
 func (s *Sequencer) Start() {
@@ -78,7 +91,14 @@ func (s *Sequencer) ProcessAudio(out Buffer) {
 		if s.Tick % bpm == 0 {
 			rows = s.Pattern.GetRowsAtIndex(s.Tick / bpm)
 			for _, row := range rows {
-				for _, note := range row.Notes {
+				for position, note := range row.Notes {
+					previousNote := s.PlayNote(position, note)
+					if previousNote != nil {
+						if note.IsNoteOn() {
+							off, _ := previousNote.ToNoteOff()
+							instrument.ProcessEvent(off.Event)
+						}
+					}
 					instrument.ProcessEvent(note.Event)
 				}
 			}

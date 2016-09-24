@@ -4,7 +4,6 @@ import midi "github.com/mattetti/audio/midi"
 import "strings"
 import "strconv"
 import "errors"
-import "fmt"
 
 type Note struct {
 	Event *midi.Event
@@ -16,9 +15,21 @@ func NewNote(event *midi.Event) (*Note, error) {
 	return note, nil
 }
 
+func (note *Note) IsNoteOff() bool {
+	return note.Event != nil && note.Event.MsgType == midi.EventByteMap["NoteOff"]
+}
+
+func (note *Note) IsNoteOn() bool {
+	return note.Event != nil && note.Event.MsgType == midi.EventByteMap["NoteOn"]
+}
+
+func (note *Note) ToNoteOff() (*Note, error) {
+	return NewNote(midi.NoteOff(0, int(note.Event.Note)))
+}
+
 var NoteMap = map[string]int {
-	"a": 57,
-	"b": 59,
+	"a": 69,
+	"b": 71,
 	"c": 60,
 	"d": 62,
 	"e": 64,
@@ -63,7 +74,18 @@ func NewNoteFromString(str string) (*Note, error) {
 		return nil, error
 	}
 	note, error := NewNote(midi.NoteOn(0, value, 50))
-	fmt.Println(value)
+	if error != nil {
+		return nil, error
+	}
+	return note, nil
+}
+
+func NewNoteOffFromString(str string) (*Note, error) {
+	value, error := NoteValue(str)
+	if error != nil {
+		return nil, error
+	}
+	note, error := NewNote(midi.NoteOff(0, value))
 	if error != nil {
 		return nil, error
 	}
