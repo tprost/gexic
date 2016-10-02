@@ -1,0 +1,1 @@
+The plan is to make instruments, patterns and other configuration done through text files. Other features I want are exporting to FastTracker 2 "Extended Module" format and perhaps some kind of Emacs mode for editing the patterns and instruments live.
