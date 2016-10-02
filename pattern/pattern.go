@@ -1,8 +1,9 @@
-package sequencer
+package pattern
 
 import "os"
 import "bufio"
 import "strings"
+import . "gexic/instrument"
 
 type Pattern struct {
 	Instrument Instrument

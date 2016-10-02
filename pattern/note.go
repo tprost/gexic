@@ -1,4 +1,4 @@
-package sequencer
+package pattern
 
 import midi "github.com/mattetti/audio/midi"
 import "strings"

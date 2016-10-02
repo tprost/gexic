@@ -1,4 +1,4 @@
-package sequencer
+package instrument
 
 import (
 	"github.com/mkb218/gosndfile/sndfile"

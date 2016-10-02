@@ -1,4 +1,4 @@
-package sequencer
+package pattern
 
 type Row struct {
 	Notes []*Note

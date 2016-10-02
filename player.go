@@ -1,7 +1,7 @@
 package main
 
 import (
-	. "golang-music-stuff/sequencer"
+	. "gexic/sequencer"
 	"github.com/gordonklaus/portaudio"
 	"fmt"
 )

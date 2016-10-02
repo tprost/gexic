@@ -4,6 +4,7 @@ import (
 	"github.com/gordonklaus/portaudio"
 	_ "encoding/binary"
 	"fmt"
+	. "gexic/pattern"
 )
 
 var sampleRate int = 44100

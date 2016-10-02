@@ -1,7 +1,9 @@
 package main
 
 import (
-	. "golang-music-stuff/sequencer"
+	. "gexic/sequencer"
+	. "gexic/instrument"
+	. "gexic/pattern"
 	"fmt"
 	"time"
 )
